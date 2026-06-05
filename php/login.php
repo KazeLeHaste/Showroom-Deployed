@@ -15,18 +15,50 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user) {
-        // User exists, verify hashed password
-        if (password_verify($password, $user['user_password'])) {
-            $_SESSION['username'] = $user['user_name'];
-            $_SESSION['role'] = $user['account_type'];
-            $_SESSION['user_id'] = $user['user_id'];
+        // Determine if stored password is hashed or plaintext
+        $stored = $user['user_password'];
+        $pwInfo = password_get_info($stored);
 
-            header("Location: ../website/yourhome.php");
-            exit;
+        if ($pwInfo['algo'] === 0) {
+            // Legacy plaintext password stored. Compare directly.
+            if ($password === $stored) {
+                // Re-hash the plaintext password and update the DB
+                $newHash = password_hash($password, PASSWORD_DEFAULT);
+                $update = $conn->prepare("UPDATE user_info SET user_password = :pw WHERE user_id = :id");
+                $update->execute([':pw' => $newHash, ':id' => $user['user_id']]);
+
+                $_SESSION['username'] = $user['user_name'];
+                $_SESSION['role'] = $user['account_type'];
+                $_SESSION['user_id'] = $user['user_id'];
+
+                header("Location: ../website/yourhome.php");
+                exit;
+            } else {
+                $_SESSION['error_message'] = "Invalid Password";
+                header("Location: ../website/home.php");
+                exit;
+            }
         } else {
-            $_SESSION['error_message'] = "Invalid Password";
-            header("Location: ../website/home.php");
-            exit;
+            // Stored password is hashed. Verify using password_verify.
+            if (password_verify($password, $stored)) {
+                // Optionally rehash if algorithm parameters changed
+                if (password_needs_rehash($stored, PASSWORD_DEFAULT)) {
+                    $newHash = password_hash($password, PASSWORD_DEFAULT);
+                    $update = $conn->prepare("UPDATE user_info SET user_password = :pw WHERE user_id = :id");
+                    $update->execute([':pw' => $newHash, ':id' => $user['user_id']]);
+                }
+
+                $_SESSION['username'] = $user['user_name'];
+                $_SESSION['role'] = $user['account_type'];
+                $_SESSION['user_id'] = $user['user_id'];
+
+                header("Location: ../website/yourhome.php");
+                exit;
+            } else {
+                $_SESSION['error_message'] = "Invalid Password";
+                header("Location: ../website/home.php");
+                exit;
+            }
         }
     } else {
         $_SESSION['error_message'] = "Invalid Username.";
