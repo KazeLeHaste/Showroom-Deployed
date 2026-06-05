@@ -10,6 +10,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = $_POST['email'];
     $account = "Customer";
 
+    // Hash the password before storing it
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
     // Use PDO prepared statement to insert the user
     $sql = "INSERT INTO user_info (user_name, user_email, user_password, account_type) VALUES (:username, :email, :password, :account)";
     $stmt = $conn->prepare($sql);
@@ -17,7 +20,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->execute([
             ':username' => $username,
             ':email' => $email,
-            ':password' => $password,
+            ':password' => $hashedPassword,
             ':account' => $account
         ]);
         $_SESSION['success_message'] = "Account Created.";

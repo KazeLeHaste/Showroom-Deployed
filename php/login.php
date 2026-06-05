@@ -15,8 +15,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user) {
-        // User exists, check password (consider hashing in future)
-        if ($password == $user['user_password']) {
+        // User exists, verify hashed password
+        if (password_verify($password, $user['user_password'])) {
             $_SESSION['username'] = $user['user_name'];
             $_SESSION['role'] = $user['account_type'];
             $_SESSION['user_id'] = $user['user_id'];
