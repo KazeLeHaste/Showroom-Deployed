@@ -38,15 +38,14 @@
                 <?php
                 // Retrieve products from product_table
                 $sql = "SELECT product_id, product_name FROM product_table";
-                $result = mysqli_query($conn, $sql);
+                $stmt = $conn->prepare($sql);
+                $stmt->execute();
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 // Generate options
-                while ($row = mysqli_fetch_assoc($result)) {
-                    echo "<option value='". $row['product_id']. "'>". $row['product_name']. "</option>";
+                foreach ($rows as $row) {
+                    echo "<option value='". htmlspecialchars($row['product_id']). "'>". htmlspecialchars($row['product_name']). "</option>";
                 }
-
-                // Close connection
-                mysqli_close($conn);
             ?>
             </select> 
                 <br>

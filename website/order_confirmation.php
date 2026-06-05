@@ -23,39 +23,19 @@ $order_id = $_SESSION['order_id'];
 $user_id = $_SESSION['user_id'];
 
 // Retrieve the order details from the database
-$query = "SELECT * FROM orders_table WHERE order_id = ?";
+$query = "SELECT * FROM orders_table WHERE order_id = :order_id";
 $stmt = $conn->prepare($query);
-if (!$stmt) {
-    die("Error preparing statement: " . $conn->error);
-}
-$stmt->bind_param("i", $order_id);
-$stmt->execute();
-$result = $stmt->get_result();
-if (!$result) {
-    die("Error executing query: " . $stmt->error);
-}
-$order_data = $result->fetch_assoc();
+$stmt->execute([':order_id' => $order_id]);
+$order_data = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$order_data) {
     die("No order data found for order_id: " . $order_id);
 }
 
 // Retrieve the cart items from the database
-$query = "SELECT product_name, quantity, product_price, total_price FROM cart_table WHERE user_id = ?";
+$query = "SELECT product_name, quantity, product_price, total_price FROM cart_table WHERE user_id = :user_id";
 $stmt = $conn->prepare($query);
-if (!$stmt) {
-    die("Error preparing statement: " . $conn->error);
-}
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$result = $stmt->get_result();
-if (!$result) {
-    die("Error executing query: " . $stmt->error);
-}
-
-$cart_items = array();
-while ($row = $result->fetch_assoc()) {
-    $cart_items[] = $row;
-}
+$stmt->execute([':user_id' => $user_id]);
+$cart_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 if (empty($cart_items)) {
     die("No cart items found for user_id: " . $user_id);
 }

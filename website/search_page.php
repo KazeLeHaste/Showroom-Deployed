@@ -37,28 +37,28 @@
     <div class="content">
             
                 <?php
-                // Include the connect.php file
-                require_once '../php/connect.php';
-
                 // Check if the search form has been submitted
                 if (isset($_POST['search'])) {
                     // Get the search query from the form
-                    $searchQuery = mysqli_real_escape_string($conn, $_POST['search']);
+                    $searchQuery = $_POST['search'];
 
-                    // Query the database for search results
-                    $sql = "SELECT * FROM product_table WHERE product_name LIKE '%$searchQuery%' OR product_description LIKE '%$searchQuery%' OR product_classification LIKE '%$searchQuery%'";
-                    $result = mysqli_query($conn, $sql);
+                    // Query the database for search results using parameterized LIKE
+                    $sql = "SELECT * FROM product_table WHERE product_name ILIKE :q OR product_description ILIKE :q OR product_classification ILIKE :q";
+                    $stmt = $conn->prepare($sql);
+                    $like = '%' . $searchQuery . '%';
+                    $stmt->execute([':q' => $like]);
+                    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                     // Check if there are any rows in the result
-                    if (mysqli_num_rows($result) > 0) {
+                    if (count($rows) > 0) {
                         // Loop through each row and display the product information
-                        while ($row = mysqli_fetch_assoc($result)) {
+                        foreach ($rows as $row) {
                             echo "<a href='indi-product_page.php?product_id=" . $row['product_id'] . "'>";
                             echo "<div class='product'>";
                             echo "<img src='../images/" . $row['product_id'] . ".jpg' alt='Product Image'>";
                             echo "<div class='product-description'>";
-                            echo "<label>" . $row['product_name'] . "</label>";
-                            echo "<label>₱" . $row['product_price'] . "</label>";
+                            echo "<label>" . htmlspecialchars($row['product_name']) . "</label>";
+                            echo "<label>₱" . htmlspecialchars($row['product_price']) . "</label>";
                             echo "</div>";
                             echo "</div>";
                             echo "</a>";
@@ -66,9 +66,6 @@
                     } else {
                         echo "No products found.";
                     }
-
-                    // Close the database connection
-                    mysqli_close($conn);
                 }
                 ?>
             

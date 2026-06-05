@@ -53,12 +53,9 @@
         <?php
         // Query to retrieve data from orders_table
         $sql = "SELECT order_id, user_id, receiver_name, order_date, total FROM orders_table";
-        $result = mysqli_query($conn, $sql);
-
-        // Check if query was successful
-        if (!$result) {
-        die("Query failed: ". mysqli_error($conn));
-        }
+        $stmt = $conn->prepare($sql);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Print table header
         echo "<table border='1'>";
@@ -66,15 +63,15 @@
 
         // Print table data
         $total = 0;
-        while ($row = mysqli_fetch_assoc($result)) {
-        echo "<tr>";
-        echo "<td>". $row["order_id"]. "</td>";
-        echo "<td>". $row["user_id"]. "</td>";
-        echo "<td>". $row["receiver_name"]. "</td>";
-        echo "<td>". $row["order_date"]. "</td>";
-        echo "<td>". "₱" . $row["total"]. "</td>";
-        echo "</tr>";
-        $total += $row["total"];
+        foreach ($rows as $row) {
+            echo "<tr>";
+            echo "<td>". htmlspecialchars($row["order_id"]). "</td>";
+            echo "<td>". htmlspecialchars($row["user_id"]). "</td>";
+            echo "<td>". htmlspecialchars($row["receiver_name"]). "</td>";
+            echo "<td>". htmlspecialchars($row["order_date"]). "</td>";
+            echo "<td>". "₱" . htmlspecialchars($row["total"]). "</td>";
+            echo "</tr>";
+            $total += $row["total"];
         }
 
         // Print table footer
@@ -82,9 +79,6 @@
 
         // Print total
         echo "<p>Gross Sales: ₱". number_format($total, 2). "</p>";
-
-        // Close database connection
-        mysqli_close($conn);
         ?>
 
         </div>

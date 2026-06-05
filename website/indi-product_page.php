@@ -33,14 +33,6 @@
 
     
     <?php
-        // Connect to the database
-        include '../php/connect.php';
-
-        // Check connection
-        if (!$conn) {
-            die("Connection failed: " . mysqli_connect_error());
-        }
-
         // Get the product_id from the URL query string
         $product_id = $_GET['product_id'];
 
@@ -51,12 +43,10 @@
 
         if ($product_id) {
             // Prepare the query to prevent SQL injection
-            $query = "SELECT * FROM product_table WHERE product_id = ?";
-            $stmt = mysqli_prepare($conn, $query);
-            mysqli_stmt_bind_param($stmt, "i", $product_id);
-            mysqli_stmt_execute($stmt);
-            $result = mysqli_stmt_get_result($stmt);
-            $product_data = mysqli_fetch_assoc($result);
+            $query = "SELECT * FROM product_table WHERE product_id = :product_id";
+            $stmt = $conn->prepare($query);
+            $stmt->execute([':product_id' => $product_id]);
+            $product_data = $stmt->fetch(PDO::FETCH_ASSOC);
 
             // Check if the product exists
             if ($product_data) {
@@ -103,8 +93,7 @@
             echo "Invalid product ID";
         }
 
-        // Close the database connection
-        mysqli_close($conn);
+        // PDO connection is managed by connect.php; no explicit close needed
     ?>
 
     <script>

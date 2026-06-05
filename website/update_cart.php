@@ -2,7 +2,7 @@
 session_start();
 require_once '../php/connect.php';
 
-$cart_id = $_POST['cart_id'];
+$cart_id = isset($_POST['cart_id']) ? intval($_POST['cart_id']) : 0;
 $action = $_POST['action'];
 
 switch ($action) {
@@ -24,17 +24,22 @@ switch ($action) {
         exit;
 }
 
-// Execute the update query
-mysqli_query($conn, $sql);
+// Execute the update query using PDO
+$stmt = $conn->prepare($sql);
+$stmt->execute([':cart_id' => $cart_id]);
 
-$sql_check = "SELECT quantity FROM cart_table WHERE cart_id = $cart_id";
-$result = mysqli_query($conn, $sql_check);
-$row = mysqli_fetch_assoc($result);
+$sql_check = "SELECT quantity FROM cart_table WHERE cart_id = :cart_id";
+$checkStmt = $conn->prepare($sql_check);
+$checkStmt->execute([':cart_id' => $cart_id]);
+$row = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
-if ($row['quantity'] <= 0) {
+if (!$row) {
+    // Nothing to do
+} else if ($row['quantity'] <= 0) {
     // Delete the item from the cart table if quantity reaches 0
-    $sql_delete = "DELETE FROM cart_table WHERE cart_id = $cart_id";
-    mysqli_query($conn, $sql_delete);
+    $sql_delete = "DELETE FROM cart_table WHERE cart_id = :cart_id";
+    $delStmt = $conn->prepare($sql_delete);
+    $delStmt->execute([':cart_id' => $cart_id]);
 } else {
     // Update the total price
     updateTotalPrice($cart_id, $conn);
@@ -46,23 +51,22 @@ exit;
 
 // Function to update the total price
 function updateTotalPrice($cart_id, $conn) {
-  // Retrieve the product price from the product_table
-  $query = "SELECT product_price FROM product_table WHERE product_id = (SELECT product_id FROM cart_table WHERE cart_id = '$cart_id')";
-  $result = mysqli_query($conn, $query);
-  $row = mysqli_fetch_assoc($result);
-  $price = $row['product_price'];
+    // Retrieve product price and quantity in a single query
+    $query = "SELECT p.product_price, c.quantity FROM cart_table c JOIN product_table p ON c.product_id = p.product_id WHERE c.cart_id = :cart_id";
+    $stmt = $conn->prepare($query);
+    $stmt->execute([':cart_id' => $cart_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) return;
 
-  // Retrieve the quantity from the cart_table
-  $query = "SELECT quantity FROM cart_table WHERE cart_id = '$cart_id'";
-  $result = mysqli_query($conn, $query);
-  $row = mysqli_fetch_assoc($result);
-  $quantity = $row['quantity'];
+    $price = $row['product_price'];
+    $quantity = $row['quantity'];
 
-  // Calculate the total price
-  $total_price = $price * $quantity;
+    // Calculate the total price
+    $total_price = $price * $quantity;
 
-  // Update the total_price column in the cart_table
-  $query = "UPDATE cart_table SET total_price = '$total_price' WHERE cart_id = '$cart_id'";
-  mysqli_query($conn, $query);
+    // Update the total_price column in the cart_table
+    $update = "UPDATE cart_table SET total_price = :total_price WHERE cart_id = :cart_id";
+    $updateStmt = $conn->prepare($update);
+    $updateStmt->execute([':total_price' => $total_price, ':cart_id' => $cart_id]);
 }
 ?>

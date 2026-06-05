@@ -25,94 +25,57 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 
     // Check if the product is already in the cart
-    $stmt = $conn->prepare("SELECT * FROM cart_table WHERE user_id =? AND product_id =?");
-    if (!$stmt) {
-        echo "Error preparing statement: ". $conn->error;
-        exit;
-    }
-    $stmt->bind_param("ii", $user_id, $product_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $checkSql = "SELECT cart_id, quantity FROM cart_table WHERE user_id = :user_id AND product_id = :product_id";
+    $checkStmt = $conn->prepare($checkSql);
+    $checkStmt->execute([':user_id' => $user_id, ':product_id' => $product_id]);
+    $existing = $checkStmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($result->num_rows > 0) {
+    if ($existing) {
         // Update quantity if product is already in the cart
-        $stmt = $conn->prepare("UPDATE cart_table SET quantity = quantity +? WHERE user_id =? AND product_id =?");
-        if (!$stmt) {
-            echo "Error preparing statement: ". $conn->error;
-            exit;
-        }
-        $stmt->bind_param("iii", $quantity, $user_id, $product_id);
+        $updateSql = "UPDATE cart_table SET quantity = quantity + :quantity WHERE user_id = :user_id AND product_id = :product_id";
+        $stmt = $conn->prepare($updateSql);
+        $stmt->execute([':quantity' => $quantity, ':user_id' => $user_id, ':product_id' => $product_id]);
+        $cart_id = $existing['cart_id'];
     } else {
-        // Insert new cart item
-        $stmt = $conn->prepare("INSERT INTO cart_table (user_id, product_id, quantity) VALUES (?,?,?)");
-        if (!$stmt) {
-            echo "Error preparing statement: ". $conn->error;
-            exit;
-        }
-        $stmt->bind_param("iii", $user_id, $product_id, $quantity);
+        // Insert new cart item (returning cart_id)
+        $insertSql = "INSERT INTO cart_table (user_id, product_id, quantity) VALUES (:user_id, :product_id, :quantity) RETURNING cart_id";
+        $stmt = $conn->prepare($insertSql);
+        $stmt->execute([':user_id' => $user_id, ':product_id' => $product_id, ':quantity' => $quantity]);
+        $cart_id = $stmt->fetchColumn();
     }
 
-    if ($stmt->execute()) {
-        // Get the cart ID
-        $cart_id = $conn->insert_id;
-
+    if ($cart_id) {
         // Update the total price
         updateTotalPrice($cart_id, $conn);
-
-
         header("Location:../website/cart_page.php");
-    } else {
-
+        exit;
     }
-
-    $stmt->close();
-    $conn->close();
 }
 
 // Function to update the total price
 function updateTotalPrice($cart_id, $conn) {
-
-    $sql = "SELECT product_name, product_price FROM product_table WHERE product_id = (SELECT product_id FROM cart_table WHERE cart_id =?)";
+    // Get product info and quantity
+    $sql = "SELECT p.product_name, p.product_price, c.quantity
+            FROM cart_table c
+            JOIN product_table p ON c.product_id = p.product_id
+            WHERE c.cart_id = :cart_id";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $cart_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $stmt->execute([':cart_id' => $cart_id]);
+    $data = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Check if the query returned any results
-    if ($result->num_rows > 0) {
-        // Store the result in a variable
-        $data = $result->fetch_assoc();
-        $name = $data['product_name'];
-        $price = $data['product_price'];
+    if (!$data) {
+        return;
     }
 
+    $name = $data['product_name'];
+    $price = $data['product_price'];
+    $quantity = $data['quantity'];
 
-    // Retrieve the product price from the product_table
-    $query = "SELECT product_price FROM product_table WHERE product_id = (SELECT product_id FROM cart_table WHERE cart_id =?)";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $cart_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $price = $row['product_price'];
-
-    // Retrieve the quantity from the cart_table
-    $query = "SELECT quantity FROM cart_table WHERE cart_id =?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $cart_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result->fetch_assoc();
-    $quantity = $row['quantity'];
-
-    // Calculate the total price
     $total_price = $price * $quantity;
 
-    // Update the total_price, product_name, and product_price columns in the cart_table
-    $query = "UPDATE cart_table SET total_price =?, product_name =?, product_price =? WHERE cart_id =?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("dssi", $total_price, $name, $price, $cart_id);
-    $stmt->execute();
+    $updateSql = "UPDATE cart_table SET total_price = :total_price, product_name = :name, product_price = :price WHERE cart_id = :cart_id";
+    $updateStmt = $conn->prepare($updateSql);
+    $updateStmt->execute([':total_price' => $total_price, ':name' => $name, ':price' => $price, ':cart_id' => $cart_id]);
 }
 
 // Function to check if the product stock is sufficient
@@ -120,18 +83,13 @@ function checkStock($product_id, $quantity)
 {
     global $conn;
 
-    $stmt = $conn->prepare("SELECT product_stock FROM product_table WHERE product_id =?");
-    $stmt->bind_param("i", $product_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $stmt = $conn->prepare("SELECT product_stock FROM product_table WHERE product_id = :product_id");
+    $stmt->execute([':product_id' => $product_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
+    if ($row && isset($row['product_stock'])) {
         $stock = $row['product_stock'];
-
-        if ($stock >= $quantity) {
-            return true;
-        }
+        return ($stock >= $quantity);
     }
 
     return false;

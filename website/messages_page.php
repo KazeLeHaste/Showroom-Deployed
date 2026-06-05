@@ -54,36 +54,27 @@
         <div class="about-us-3">
         <h1>Client Messages/Inquiries</h1>
         <?php
-        // Query to retrieve data from orders_table
-        $sql = "SELECT `name`, email, `message` FROM inquiry_table";
-        $result = mysqli_query($conn, $sql);
-
-        // Check if query was successful
-        if (!$result) {
-        die("Query failed: ". mysqli_error($conn));
-        }
+        // Query to retrieve data from inquiry_table
+        $sql = "SELECT name, email, message FROM inquiry_table";
+        $stmt = $conn->prepare($sql);
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Print table header
         echo "<table border='1'>";
         echo "<tr><th>Name</th><th>Email</th><th>Message</th></tr>";
 
         // Print table data
-        $total = 0;
-        while ($row = mysqli_fetch_assoc($result)) {
-        echo "<tr>";
-        echo "<td>". $row["name"]. "</td>";
-        echo "<td>". $row["email"]. "</td>";
-        echo "<td>". $row["message"]. "</td>";
-        echo "</tr>";
+        foreach ($rows as $row) {
+            echo "<tr>";
+            echo "<td>". htmlspecialchars($row["name"]). "</td>";
+            echo "<td>". htmlspecialchars($row["email"]). "</td>";
+            echo "<td>". htmlspecialchars($row["message"]). "</td>";
+            echo "</tr>";
         }
 
         // Print table footer
         echo "</table>";
-
-        // Print total
-
-        // Close database connection
-        mysqli_close($conn);
         ?>
 
         </div>

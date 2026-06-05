@@ -1,6 +1,7 @@
 <?php
 // Connect to the database
 require_once 'connect.php';
+session_start();
 
 // Check if the form is submitted
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -13,27 +14,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $product_price = $_POST['product_price'];
     $product_stock = $_POST['product_stock'];
 
-    // Initialize an empty array to store the update queries
-    $update_queries = array();
+    // Prepare fields and parameters for an update query
+    $fields = [];
+    $params = [':product_id' => $product_id];
 
-    // Check if each field is not empty, and add the update query to the array
     if (!empty($product_description)) {
-        $update_queries[] = "product_description = '$product_description'";
+        $fields[] = 'product_description = :product_description';
+        $params[':product_description'] = $product_description;
     }
     if (!empty($product_classification)) {
-        $update_queries[] = "product_classification = '$product_classification'";
+        $fields[] = 'product_classification = :product_classification';
+        $params[':product_classification'] = $product_classification;
     }
     if (!empty($product_price)) {
-        $update_queries[] = "product_price = '$product_price'";
+        $fields[] = 'product_price = :product_price';
+        $params[':product_price'] = $product_price;
     }
     if (!empty($product_stock)) {
-        $update_queries[] = "product_stock = '$product_stock'";
+        $fields[] = 'product_stock = :product_stock';
+        $params[':product_stock'] = $product_stock;
     }
 
-    // If there are update queries, construct the UPDATE statement
-    if (!empty($update_queries)) {
-        $update_query = "UPDATE product_table SET ". implode(', ', $update_queries). " WHERE product_id = '$product_id'";
-        mysqli_query($conn, $update_query);
+    // If there are update fields, construct and execute the UPDATE statement
+    if (!empty($fields)) {
+        $update_query = 'UPDATE product_table SET ' . implode(', ', $fields) . ' WHERE product_id = :product_id';
+        $stmt = $conn->prepare($update_query);
+        $stmt->execute($params);
 
         // Set a success message
         $_SESSION['success_message'] = 'Product updated successfully!';

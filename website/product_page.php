@@ -37,35 +37,27 @@
     <div class="container">
         <div class="content">
         <?php
-            // Include the database connection file
-            include '../php/connect.php';
-
-            // Write the SQL query
+            // Query products using PDO
             $sql = "SELECT product_name, product_price, product_id FROM product_table";
+            $stmt = $conn->prepare($sql);
+            $stmt->execute();
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Execute the SQL query
-            $result = mysqli_query($conn, $sql);
-
-            // Check if there are any rows in the result
-            if (mysqli_num_rows($result) > 0) {
-            // Loop through each row and display the product information
-            while ($row = mysqli_fetch_assoc($result)) {
-                echo "<a class='product-link' href='indi-product_page.php?product_id=" . $row['product_id'] . "'>";
-                echo "<div class='product'>";
-                echo "<img src='../images/" . $row['product_id'] . ".jpg' alt='Product Image'>";
-                echo "<div class='product-description'>";
-                echo "<label>" . $row['product_name'] . "</label>";
-                echo "<label>₱" . $row['product_price'] . "</label>";
-                echo "</div>";
-                echo "</div>";
-                echo "</a>";
-            }
+            if (count($rows) > 0) {
+                foreach ($rows as $row) {
+                    echo "<a class='product-link' href='indi-product_page.php?product_id=" . $row['product_id'] . "'>";
+                    echo "<div class='product'>";
+                    echo "<img src='../images/" . $row['product_id'] . ".jpg' alt='Product Image'>";
+                    echo "<div class='product-description'>";
+                    echo "<label>" . htmlspecialchars($row['product_name']) . "</label>";
+                    echo "<label>₱" . htmlspecialchars($row['product_price']) . "</label>";
+                    echo "</div>";
+                    echo "</div>";
+                    echo "</a>";
+                }
             } else {
-            echo "No products found.";
+                echo "No products found.";
             }
-
-            // Close the database connection
-            mysqli_close($conn);
         ?>
             
         </div>

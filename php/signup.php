@@ -1,6 +1,7 @@
 <?php
 // Include the connect.php file
 require_once 'connect.php';
+session_start();
 
 // Check if the form has been submitted
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -9,19 +10,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = $_POST['email'];
     $account = "Customer";
 
-    // Attempt insert query execution
-    $sql = "INSERT INTO user_info (user_name, user_email, user_password, account_type) VALUES (?, ?, ?, ?)";
-    $stmt = mysqli_prepare($conn, $sql);
-    mysqli_stmt_bind_param($stmt, "ssss", $username, $email, $password, $account);
-    mysqli_stmt_execute($stmt);
-
-    // Check for errors
-    if (mysqli_stmt_errno($stmt)) {
-        echo "Error: " . mysqli_stmt_error($stmt);
-    } else {
+    // Use PDO prepared statement to insert the user
+    $sql = "INSERT INTO user_info (user_name, user_email, user_password, account_type) VALUES (:username, :email, :password, :account)";
+    $stmt = $conn->prepare($sql);
+    try {
+        $stmt->execute([
+            ':username' => $username,
+            ':email' => $email,
+            ':password' => $password,
+            ':account' => $account
+        ]);
         $_SESSION['success_message'] = "Account Created.";
         header("Location: ../website/home.php");
-
+        exit;
+    } catch (PDOException $e) {
+        echo "Error: " . $e->getMessage();
     }
 }
 ?>

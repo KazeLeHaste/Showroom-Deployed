@@ -34,13 +34,12 @@
     <?php
             $user_id = $_SESSION['user_id'];
 
-            $stmt = $conn->prepare("SELECT c.cart_id, p.product_id, p.product_name, p.product_description, p.product_price, c.quantity FROM cart_table c JOIN product_table p ON c.product_id = p.product_id WHERE c.user_id =?");
-            $stmt->bind_param("i", $user_id);
-            $stmt->execute();
-            $result = $stmt->get_result();
+            $stmt = $conn->prepare("SELECT c.cart_id, p.product_id, p.product_name, p.product_description, p.product_price, c.quantity FROM cart_table c JOIN product_table p ON c.product_id = p.product_id WHERE c.user_id = :user_id");
+            $stmt->execute([':user_id' => $user_id]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            if ($result->num_rows > 0) {
-                while ($cart_data = mysqli_fetch_assoc($result)) {
+            if (count($rows) > 0) {
+                foreach ($rows as $cart_data) {
                    ?>
                         
                             <div class="content-cart">
@@ -91,12 +90,11 @@
             } else {
                 echo "<div style='text-align: center; font-size: 24px; margin-top: 20px; display: flex; align-items: center; justify-content: center; width: 100%; margin-bottom: 12px;'>Your cart is empty.</div>";
             }
-            $stmt->close();
-            $conn->close();
+            // PDO will clean up the statement and connection automatically
          ?>
          <form action="checkout_page.php" method="post" class="checkout-1">
             <?php
-            if ($result->num_rows > 0) {
+            if (count($rows) > 0) {
                 ?>
                 <button type="submit" class="checkout" name="checkout">Checkout</button>
             <?php

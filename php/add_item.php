@@ -11,18 +11,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $product_price = $_POST['product_price'];
     $product_stock = $_POST['product_stock'];
 
-    // Attempt insert query execution
-    $sql = "INSERT INTO product_table (product_name, product_description, product_classification, product_price, product_stock) VALUES (?, ?, ?, ?, ?)";
-    $stmt = mysqli_prepare($conn, $sql);
-    mysqli_stmt_bind_param($stmt, "ssiii", $product_name, $product_description, $product_classification, $product_price, $product_stock);
-    mysqli_stmt_execute($stmt);
-
-    // Check for errors
-    if (mysqli_stmt_errno($stmt)) {
-        echo "Error: " . mysqli_stmt_error($stmt);
-    } else {
+    // Insert product using PDO prepared statement
+    $sql = "INSERT INTO product_table (product_name, product_description, product_classification, product_price, product_stock) VALUES (:name, :description, :classification, :price, :stock)";
+    $stmt = $conn->prepare($sql);
+    try {
+        $stmt->execute([
+            ':name' => $product_name,
+            ':description' => $product_description,
+            ':classification' => $product_classification,
+            ':price' => $product_price,
+            ':stock' => $product_stock
+        ]);
         $_SESSION['success_message'] = "Item Saved.";
         header("Location: ../website/add_product_page.php");
+        exit;
+    } catch (PDOException $e) {
+        echo "Error: " . $e->getMessage();
     }
 }
 ?>

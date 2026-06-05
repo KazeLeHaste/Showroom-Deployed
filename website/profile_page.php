@@ -16,19 +16,10 @@
 
     $user_id = $_SESSION['user_id'];
 
-    $query = "SELECT * FROM user_info WHERE user_id = ?";
+    $query = "SELECT * FROM user_info WHERE user_id = :user_id";
     $stmt = $conn->prepare($query);
-    if (!$stmt) {
-        die("Error preparing statement: " . $conn->error);
-    }
-    $stmt->bind_param("i", $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if (!$result) {
-        die("Error executing query: " . $stmt->error);
-    }
-
-    $user_infos = $result->fetch_assoc();
+    $stmt->execute([':user_id' => $user_id]);
+    $user_infos = $stmt->fetch(PDO::FETCH_ASSOC);
     
 ?>
 <!DOCTYPE html>
